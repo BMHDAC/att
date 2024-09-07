@@ -26,16 +26,11 @@ pub async fn login(
             .bind(user.email)
             .bind(user.password)
             .fetch_one(database)
-            .await;
-
-    if let Ok(user) = user {
-        return Ok(Json(ApiResponse {
-            data: user,
-            meta: None,
-        }));
-    }
-
-    Err(ErrorResponse::Forbidden)
+            .await?;
+    Ok(Json(ApiResponse {
+        data: user,
+        meta: None,
+    }))
 }
 
 #[derive(Debug, Deserialize)]

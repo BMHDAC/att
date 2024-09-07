@@ -2,7 +2,7 @@ use std::error::Error;
 
 use chrono::NaiveDate;
 use serde::{Deserialize, Serialize};
-use sqlx::{postgres::PgPoolOptions, prelude::FromRow, types::uuid::Timestamp, PgPool};
+use sqlx::{postgres::PgPoolOptions, FromRow, PgPool};
 
 pub async fn create_pool(
     host: &str,
@@ -59,47 +59,47 @@ pub enum GroupUserStatus {
     BlackList,
 }
 
-#[derive(FromRow)]
+#[derive(FromRow, Serialize, Deserialize)]
 pub struct GroupsUsers {
     pub id: String,
     pub user_id: String,
-    pub join_date: Timestamp,
-    pub created_at: Timestamp,
-    pub updated_at: Timestamp,
-    pub deleted_at: Option<Timestamp>,
+    pub join_date: chrono::DateTime<chrono::Utc>,
+    pub created_at: chrono::DateTime<chrono::Utc>,
+    pub updated_at: chrono::DateTime<chrono::Utc>,
+    pub deleted_at: Option<chrono::DateTime<chrono::Utc>>,
 }
 
-#[derive(FromRow)]
+#[derive(FromRow, Deserialize, Serialize)]
 pub struct Groups {
     pub id: String,
     pub name: String,
     pub creator_id: String,
     pub project_id: String,
-    pub created_at: Timestamp,
-    pub updated_at: Timestamp,
-    pub deleted_at: Option<Timestamp>,
+    pub created_at: chrono::DateTime<chrono::Utc>,
+    pub updated_at: chrono::DateTime<chrono::Utc>,
+    pub deleted_at: Option<chrono::DateTime<chrono::Utc>>,
 }
 
-#[derive(FromRow)]
+#[derive(FromRow, Serialize, Deserialize)]
 pub struct Messages {
     pub id: String,
     pub sender_id: String,
     pub receiver_id: String,
-    pub forwarded_from: String,
+    pub forwarded_from: Option<String>,
     pub content: String,
-    pub created_at: Timestamp,
-    pub updated_at: Timestamp,
-    pub deleted_at: Option<Timestamp>,
+    pub created_at: chrono::DateTime<chrono::Utc>,
+    pub updated_at: chrono::DateTime<chrono::Utc>,
+    pub deleted_at: Option<chrono::DateTime<chrono::Utc>>,
 }
 
-#[derive(FromRow)]
+#[derive(FromRow, Serialize, Deserialize)]
 pub struct Projects {
     pub id: String,
     pub mirror_link: String,
     pub owner_id: String,
     pub vir_fs_key: Option<String>,
-    pub status: String,
-    pub created_at: Timestamp,
-    pub updated_at: Timestamp,
-    pub deleted_at: Option<Timestamp>,
+    pub status: ProjectStatus,
+    pub created_at: chrono::DateTime<chrono::Utc>,
+    pub updated_at: chrono::DateTime<chrono::Utc>,
+    pub deleted_at: Option<chrono::DateTime<chrono::Utc>>,
 }

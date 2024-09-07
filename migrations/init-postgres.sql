@@ -61,10 +61,10 @@ create table groups_users (
 
 create table messages (
   id serial,
-  sender_id varchar(255),
-  receiver_id varchar(255),
+  sender_id varchar(255) not null,
+  receiver_id varchar(255) not null,
   forwarded_from varchar(255) default null,
-  content varchar(2048),
+  content varchar(2048) not null,
   created_at timestamptz not null default current_timestamp,
   updated_at timestamptz not null default current_timestamp,
   deleted_at timestamptz default null,

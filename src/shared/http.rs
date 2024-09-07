@@ -1,6 +1,7 @@
-use axum::{response::IntoResponse, Json};
+use axum::response::IntoResponse;
 use hyper::StatusCode;
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ApiResponse<T> {
@@ -16,70 +17,52 @@ pub struct ResponseMeta {
     item_count: u8,
 }
 
-pub enum ErrorResponse {
-    BadRequest,
-    NotFound,
-    Conflict,
-    InternalError,
-    Unauthorized,
-    Forbidden,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ErrorBody {
+#[derive(Debug)]
+pub struct ErrorResponse {
     message: String,
-    status_code: u16,
+    status_code: StatusCode,
+    cause: Option<String>,
 }
 
-impl ErrorBody {
-    fn new(code: StatusCode, message: &str) -> Self {
+impl ErrorResponse {
+    pub fn new(code: StatusCode, message: &str, cause: Option<String>) -> Self {
         Self {
             message: message.to_string(),
-            status_code: code.as_u16(),
+            status_code: code,
+            cause,
         }
     }
 }
 
 impl IntoResponse for ErrorResponse {
     fn into_response(self) -> axum::response::Response {
-        match self {
-            ErrorResponse::BadRequest => (
-                StatusCode::BAD_REQUEST,
-                Json(ErrorBody::new(StatusCode::BAD_REQUEST, "Bad Request")),
-            )
-                .into_response(),
-            ErrorResponse::NotFound => (
+        let payload = json!({
+            "message": self.message,
+            "statusCode": self.status_code.as_u16(),
+            "cause": self.cause
+        });
+
+        (self.status_code, axum::Json(payload)).into_response()
+    }
+}
+
+impl From<sqlx::Error> for ErrorResponse {
+    fn from(value: sqlx::Error) -> Self {
+        match value {
+            sqlx::Error::RowNotFound => Self::new(StatusCode::NOT_FOUND, "Not found", None),
+            sqlx::Error::TypeNotFound { type_name } => Self::new(
                 StatusCode::NOT_FOUND,
-                Json(ErrorBody::new(StatusCode::NOT_FOUND, "Not Found")),
-            )
-                .into_response(),
-            ErrorResponse::Conflict => (
-                StatusCode::CONFLICT,
-                Json(ErrorBody::new(StatusCode::CONFLICT, "Conflict")),
-            )
-                .into_response(),
-            ErrorResponse::InternalError => (
+                "Not Found",
+                Some(format!("Type: {type_name} not found")),
+            ),
+            sqlx::Error::ColumnNotFound(e) => {
+                Self::new(StatusCode::NOT_FOUND, "Not Found", Some(e.to_string()))
+            }
+            _ => Self::new(
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorBody::new(
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    "Internal Server Error",
-                )),
-            )
-                .into_response(),
-            ErrorResponse::Unauthorized => (
-                StatusCode::UNAUTHORIZED,
-                Json(ErrorBody::new(
-                    StatusCode::UNAUTHORIZED,
-                    "Unauthorized Access",
-                )),
-            )
-                .into_response(),
-            ErrorResponse::Forbidden => (
-                StatusCode::FORBIDDEN,
-                Json(ErrorBody::new(StatusCode::FORBIDDEN, "Forbidden Resources")),
-            )
-                .into_response(),
+                "Interal server Error",
+                None,
+            ),
         }
     }
 }
