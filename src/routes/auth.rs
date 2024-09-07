@@ -1,7 +1,5 @@
-use axum::{extract::State, response::IntoResponse, routing::post, Json, Router};
-use hyper::Response;
+use axum::{extract::State, routing::post, Json, Router};
 use serde::Deserialize;
-use sqlx::query_as;
 
 use crate::{
     configs::database::Users,
@@ -23,14 +21,12 @@ pub async fn login(
 ) -> Result<Json<ApiResponse<Users>>, ErrorResponse> {
     let database = &state.db;
 
-    let user = query_as!(
-        Users,
-        r#"select * from users where email = $1 and password = $2"#,
-        user.email,
-        user.password
-    )
-    .fetch_one(database)
-    .await;
+    let user =
+        sqlx::query_as::<_, Users>(r#"select * from users where email = $1 and password = $2"#)
+            .bind(user.email)
+            .bind(user.password)
+            .fetch_one(database)
+            .await;
 
     if let Ok(user) = user {
         return Ok(Json(ApiResponse {

@@ -29,14 +29,14 @@ pub enum ErrorResponse {
 #[serde(rename_all = "camelCase")]
 pub struct ErrorBody {
     message: String,
-    status_code: u8,
+    status_code: u16,
 }
 
 impl ErrorBody {
     fn new(code: StatusCode, message: &str) -> Self {
         Self {
             message: message.to_string(),
-            status_code: code.to_string().parse().unwrap(),
+            status_code: code.as_u16(),
         }
     }
 }

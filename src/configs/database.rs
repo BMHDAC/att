@@ -1,15 +1,8 @@
 use std::error::Error;
 
+use chrono::NaiveDate;
 use serde::{Deserialize, Serialize};
-use sqlx::{
-    postgres::PgPoolOptions,
-    prelude::FromRow,
-    types::{
-        chrono::{DateTime, Utc},
-        uuid::Timestamp,
-    },
-    PgPool,
-};
+use sqlx::{postgres::PgPoolOptions, prelude::FromRow, types::uuid::Timestamp, PgPool};
 
 pub async fn create_pool(
     host: &str,
@@ -29,17 +22,41 @@ pub struct Users {
     pub id: String,
     pub email: String,
     pub password: String,
-    pub dob: String,
+    pub dob: NaiveDate,
     pub username: String,
     pub fullname: String,
-    pub address: String,
-    pub avatar_url: String,
-    pub alias: String,
-    pub org_name: String,
-    pub status: String,
-    pub created_at: String,
-    pub updated_at: String,
-    pub deleted_at: String,
+    pub address: Option<String>,
+    pub avatar_url: Option<String>,
+    pub alias: Option<String>,
+    pub org_name: Option<String>,
+    pub status: UserStatus,
+    pub created_at: chrono::DateTime<chrono::Utc>,
+    pub updated_at: chrono::DateTime<chrono::Utc>,
+    pub deleted_at: Option<chrono::DateTime<chrono::Utc>>,
+}
+
+#[derive(Serialize, Deserialize, sqlx::Type, PartialEq, Eq, PartialOrd, Ord)]
+#[sqlx(type_name = "user_status", rename_all = "snake_case")]
+pub enum UserStatus {
+    Clean,
+    TempBanned,
+    PermaBanned,
+}
+
+#[derive(sqlx::Type, Serialize, Deserialize)]
+#[sqlx(type_name = "project_status", rename_all = "snake_case")]
+pub enum ProjectStatus {
+    Clean,
+    Dropped,
+    Watched,
+}
+
+#[derive(sqlx::Type, Serialize, Deserialize)]
+#[sqlx(type_name = "group_user_status", rename_all = "snake_case")]
+pub enum GroupUserStatus {
+    Mod,
+    User,
+    BlackList,
 }
 
 #[derive(FromRow)]

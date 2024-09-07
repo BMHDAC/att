@@ -12,10 +12,10 @@ create table users (
   address varchar(255),
   org_name varchar(255),
   avatar_url varchar(255),
-  status user_status default 'clean',
-  created_at timestamp not null default current_timestamp,
-  updated_at timestamp not null default current_timestamp,
-  deleted_at timestamp default null,
+  status user_status not null default 'clean',
+  created_at timestamptz not null default current_timestamp,
+  updated_at timestamptz not null default current_timestamp,
+  deleted_at timestamptz default null,
   constraint pk_users primary key (id)
 );
 
@@ -24,10 +24,10 @@ create table projects (
   mirror_links varchar(255) default null,
   owner_id varchar(255) not null,
   vir_fs_key varchar(255),
-  status project_status default 'clean',
-  created_at timestamp not null default current_timestamp,
-  updated_at timestamp not null default current_timestamp,
-  deleted_at timestamp default null,
+  status project_status not null default 'clean',
+  created_at timestamptz not null default current_timestamp,
+  updated_at timestamptz not null default current_timestamp,
+  deleted_at timestamptz default null,
   constraint pk_projects primary key (id),
   constraint fk_projects_users foreign key (owner_id)
   references users(id)
@@ -38,9 +38,9 @@ create table groups (
   name varchar(255) not null,
   creator_id varchar(255) not null,
   project_id varchar(255) not null,
-  created_at timestamp not null default current_timestamp,
-  updated_at timestamp not null default current_timestamp,
-  deleted_at timestamp default null,
+  created_at timestamptz not null default current_timestamp,
+  updated_at timestamptz not null default current_timestamp,
+  deleted_at timestamptz default null,
   constraint pk_groups primary key (id),
   constraint fk_groups_users foreign key (creator_id)
   references users(id),
@@ -51,11 +51,11 @@ create table groups (
 create table groups_users (
   id varchar(255) not null,
   user_id varchar(255) not null,
-  joined_date timestamp not null default current_timestamp,
-  status group_user_status default 'user',
-  created_at timestamp not null default current_timestamp,
-  updated_at timestamp not null default current_timestamp,
-  deleted_at timestamp default null,
+  joined_date timestamptz not null default current_timestamp,
+  status group_user_status not null default 'user',
+  created_at timestamptz not null default current_timestamp,
+  updated_at timestamptz not null default current_timestamp,
+  deleted_at timestamptz default null,
   constraint pk_groups_users primary key (id)
 );
 
@@ -65,9 +65,9 @@ create table messages (
   receiver_id varchar(255),
   forwarded_from varchar(255) default null,
   content varchar(2048),
-  created_at timestamp not null default current_timestamp,
-  updated_at timestamp not null default current_timestamp,
-  deleted_at timestamp default null,
+  created_at timestamptz not null default current_timestamp,
+  updated_at timestamptz not null default current_timestamp,
+  deleted_at timestamptz default null,
   constraint pk_messages primary key (id),
   constraint fk_messages_sender foreign key (sender_id)
   references users(id),
