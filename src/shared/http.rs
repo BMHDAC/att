@@ -2,6 +2,7 @@ use axum::response::IntoResponse;
 use hyper::StatusCode;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use tracing::error;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ApiResponse<T> {
@@ -48,6 +49,7 @@ impl IntoResponse for ErrorResponse {
 
 impl From<sqlx::Error> for ErrorResponse {
     fn from(value: sqlx::Error) -> Self {
+        error!("{}", value.to_string());
         match value {
             sqlx::Error::RowNotFound => Self::new(StatusCode::NOT_FOUND, "Not found", None),
             sqlx::Error::TypeNotFound { type_name } => Self::new(

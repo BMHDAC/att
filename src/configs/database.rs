@@ -36,26 +36,35 @@ pub struct Users {
 }
 
 #[derive(Serialize, Deserialize, sqlx::Type, PartialEq, Eq, PartialOrd, Ord)]
-#[sqlx(type_name = "user_status", rename_all = "snake_case")]
+#[sqlx(type_name = "user_status", rename_all = "lowercase")]
 pub enum UserStatus {
+    #[sqlx(rename = "clean")]
     Clean,
+    #[sqlx(rename = "temp_banned")]
     TempBanned,
+    #[sqlx(rename = "perma_banned")]
     PermaBanned,
 }
 
 #[derive(sqlx::Type, Serialize, Deserialize)]
-#[sqlx(type_name = "project_status", rename_all = "snake_case")]
+#[sqlx(type_name = "project_status", rename_all = "lowercase")]
 pub enum ProjectStatus {
+    #[sqlx(rename = "clean")]
     Clean,
+    #[sqlx(rename = "dropped")]
     Dropped,
+    #[sqlx(rename = "watched")]
     Watched,
 }
 
 #[derive(sqlx::Type, Serialize, Deserialize)]
-#[sqlx(type_name = "group_user_status", rename_all = "snake_case")]
+#[sqlx(type_name = "group_user_status", rename_all = "lowercase")]
 pub enum GroupUserStatus {
+    #[sqlx(rename = "mod")]
     Mod,
+    #[sqlx(rename = "user")]
     User,
+    #[sqlx(rename = "blacklist")]
     BlackList,
 }
 

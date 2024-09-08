@@ -1,4 +1,5 @@
 use axum::{extract::State, routing::post, Json, Router};
+use chrono::NaiveDate;
 use serde::Deserialize;
 
 use crate::{
@@ -12,6 +13,7 @@ use crate::{
 pub fn auth_routes(state: AppState) -> Router {
     Router::new()
         .route("/auth/login", post(login))
+        .route("/auth/register", post(register))
         .with_state(state)
 }
 
@@ -33,8 +35,45 @@ pub async fn login(
     }))
 }
 
+pub async fn register(
+    State(state): State<AppState>,
+    Json(new_user): Json<RegisterRequest>,
+) -> Result<Json<ApiResponse<String>>, ErrorResponse> {
+    let query_result = 
+        sqlx::query("insert into users(id, email, password, dob, username, fullname, address, avatar_url, alias,org_name) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)")
+        .bind(new_user.id)
+        .bind(new_user.email)
+        .bind(new_user.password)
+        .bind(new_user.dob)
+        .bind(new_user.username)
+        .bind(new_user.fullname)
+        .bind(new_user.address)
+        .bind(new_user.avatar_url)
+        .bind(new_user.alias)
+        .bind(new_user.org_name)
+        .execute(&state.db).await?;
+    Ok(Json(ApiResponse {
+        data: format!("Create {} users successfully", query_result.rows_affected()) ,
+        meta: None,
+    }))
+}
+
 #[derive(Debug, Deserialize)]
 pub struct LoginRequest {
     email: String,
     password: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct RegisterRequest {
+    id: String,
+    email: String,
+    password: String,
+    dob: NaiveDate,
+    username: String,
+    fullname: String,
+    address: Option<String>,
+    avatar_url: Option<String>,
+    alias: Option<String>,
+    org_name: Option<String>,
 }
