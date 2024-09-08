@@ -60,6 +60,9 @@ impl From<sqlx::Error> for ErrorResponse {
             sqlx::Error::ColumnNotFound(e) => {
                 Self::new(StatusCode::NOT_FOUND, "Not Found", Some(e.to_string()))
             }
+            sqlx::Error::Database(e) => {
+                Self::new(StatusCode::CONFLICT, "Database Error", Some(e.to_string()))
+            }
             _ => Self::new(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "Interal server Error",

@@ -1,6 +1,7 @@
+create type user_role as enum ('user', 'admin');
 create type user_status as enum ('clean', 'temp_banned', 'perma_banned');
 create type project_status as enum ('clean', 'dropped', 'watched');
-create type group_user_status as enum ('mod', 'user', 'blacklist');
+create type group_user_role as enum ('mod', 'user', 'blacklist');
 create table users (
   id varchar(255) unique not null,
   email varchar(255) unique not null,
@@ -13,6 +14,7 @@ create table users (
   org_name varchar(255),
   avatar_url varchar(255),
   status user_status not null default 'clean',
+  role user_role not null default 'user',
   created_at timestamptz not null default current_timestamp,
   updated_at timestamptz not null default current_timestamp,
   deleted_at timestamptz default null,
@@ -52,7 +54,7 @@ create table groups_users (
   id varchar(255) not null,
   user_id varchar(255) not null,
   joined_date timestamptz not null default current_timestamp,
-  status group_user_status not null default 'user',
+  status group_user_role not null default 'user',
   created_at timestamptz not null default current_timestamp,
   updated_at timestamptz not null default current_timestamp,
   deleted_at timestamptz default null,

@@ -29,6 +29,7 @@ pub struct Users {
     pub avatar_url: Option<String>,
     pub alias: Option<String>,
     pub org_name: Option<String>,
+    pub role: UserRole,
     pub status: UserStatus,
     pub created_at: chrono::DateTime<chrono::Utc>,
     pub updated_at: chrono::DateTime<chrono::Utc>,
@@ -36,7 +37,7 @@ pub struct Users {
 }
 
 #[derive(Serialize, Deserialize, sqlx::Type, PartialEq, Eq, PartialOrd, Ord)]
-#[sqlx(type_name = "user_status", rename_all = "lowercase")]
+#[sqlx(type_name = "user_status", rename_all = "snake_case")]
 pub enum UserStatus {
     #[sqlx(rename = "clean")]
     Clean,
@@ -45,9 +46,17 @@ pub enum UserStatus {
     #[sqlx(rename = "perma_banned")]
     PermaBanned,
 }
+#[derive(Serialize, Deserialize, Debug, sqlx::Type, PartialEq, Eq, PartialOrd, Ord)]
+#[sqlx(type_name = "user_role", rename_all = "snake_case")]
+pub enum UserRole {
+    #[sqlx(rename = "user")]
+    User,
+    #[sqlx(rename = "admin")]
+    Admin,
+}
 
 #[derive(sqlx::Type, Serialize, Deserialize)]
-#[sqlx(type_name = "project_status", rename_all = "lowercase")]
+#[sqlx(type_name = "project_status", rename_all = "snake_case")]
 pub enum ProjectStatus {
     #[sqlx(rename = "clean")]
     Clean,
@@ -58,8 +67,8 @@ pub enum ProjectStatus {
 }
 
 #[derive(sqlx::Type, Serialize, Deserialize)]
-#[sqlx(type_name = "group_user_status", rename_all = "lowercase")]
-pub enum GroupUserStatus {
+#[sqlx(type_name = "group_user_role", rename_all = "lowercase")]
+pub enum GroupUserRole {
     #[sqlx(rename = "mod")]
     Mod,
     #[sqlx(rename = "user")]

@@ -1,6 +1,10 @@
+use std::sync::{Arc, Mutex};
+
 use axum::{extract::State, routing::post, Json, Router};
 use chrono::NaiveDate;
+use hyper::StatusCode;
 use serde::Deserialize;
+use tracing::error;
 
 use crate::{
     configs::database::Users,
@@ -10,7 +14,7 @@ use crate::{
     },
 };
 
-pub fn auth_routes(state: AppState) -> Router {
+pub fn auth_routes(state: Arc<Mutex<AppState>>) -> Router {
     Router::new()
         .route("/auth/login", post(login))
         .route("/auth/register", post(register))
@@ -18,16 +22,19 @@ pub fn auth_routes(state: AppState) -> Router {
 }
 
 pub async fn login(
-    State(state): State<AppState>,
+    State(state): State<Arc<Mutex<AppState>>>,
     Json(user): Json<LoginRequest>,
 ) -> Result<Json<ApiResponse<Users>>, ErrorResponse> {
-    let database = &state.db;
+    let database = state.lock().map_err(|e| {
+        error!("{}", e.to_string());
+        ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "Internal Server Error",None )
+    })?.db.clone();
 
     let user =
         sqlx::query_as::<_, Users>(r#"select * from users where email = $1 and password = $2"#)
             .bind(user.email)
             .bind(user.password)
-            .fetch_one(database)
+            .fetch_one(&database)
             .await?;
     Ok(Json(ApiResponse {
         data: user,
@@ -36,9 +43,14 @@ pub async fn login(
 }
 
 pub async fn register(
-    State(state): State<AppState>,
+    State(state): State<Arc<Mutex<AppState>>>,
     Json(new_user): Json<RegisterRequest>,
 ) -> Result<Json<ApiResponse<String>>, ErrorResponse> {
+    let database = state.lock().map_err(|e|{
+         error!("{}", e.to_string());
+         ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "Internal Server Error", None)
+    })?.db.clone();
+
     let query_result = 
         sqlx::query("insert into users(id, email, password, dob, username, fullname, address, avatar_url, alias,org_name) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)")
         .bind(new_user.id)
@@ -51,7 +63,8 @@ pub async fn register(
         .bind(new_user.avatar_url)
         .bind(new_user.alias)
         .bind(new_user.org_name)
-        .execute(&state.db).await?;
+        .execute(&database).await?;
+
     Ok(Json(ApiResponse {
         data: format!("Create {} users successfully", query_result.rows_affected()) ,
         meta: None,
