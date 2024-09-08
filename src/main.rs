@@ -1,4 +1,5 @@
 use std::{
+    collections::HashMap,
     error::Error,
     sync::{Arc, Mutex},
 };
@@ -24,7 +25,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
     )
     .await?;
     let addr = tokio::net::TcpListener::bind(format!("127.0.0.1:{}", config.port)).await?;
-    let state = Arc::new(Mutex::new(AppState { db: pg_database }));
+    let state = Arc::new(Mutex::new(AppState {
+        db: pg_database,
+        session: HashMap::default(),
+    }));
     info!("Starting server on port {}", config.port);
     axum::serve(addr, public_routes().merge(auth_routes(state))).await?;
     Ok(())

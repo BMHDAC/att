@@ -1,16 +1,16 @@
 use std::sync::{Arc, Mutex};
 
-use axum::{extract::State, routing::post, Json, Router};
+use axum::{extract::{ State}, routing::post, Json, Router};
 use chrono::NaiveDate;
-use hyper::StatusCode;
+use hyper::{HeaderMap, StatusCode};
 use serde::Deserialize;
-use tracing::error;
+use tracing::{error, info};
 
 use crate::{
     configs::database::Users,
     shared::{
         http::{ApiResponse, ErrorResponse},
-        state::AppState,
+        state::{AppState, DeviceType, SessionToken},
     },
 };
 
@@ -22,24 +22,43 @@ pub fn auth_routes(state: Arc<Mutex<AppState>>) -> Router {
 }
 
 pub async fn login(
+    header: HeaderMap,
     State(state): State<Arc<Mutex<AppState>>>,
-    Json(user): Json<LoginRequest>,
+    Json(request): Json<LoginRequest>,
 ) -> Result<Json<ApiResponse<Users>>, ErrorResponse> {
+    info!("{:?}", header);
     let database = state.lock().map_err(|e| {
         error!("{}", e.to_string());
         ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "Internal Server Error",None )
     })?.db.clone();
-
     let user =
         sqlx::query_as::<_, Users>(r#"select * from users where email = $1 and password = $2"#)
-            .bind(user.email)
-            .bind(user.password)
+            .bind(request.email)
+            .bind(request.password)
             .fetch_one(&database)
             .await?;
-    Ok(Json(ApiResponse {
-        data: user,
-        meta: None,
-    }))
+
+    let sessions = &mut state.lock().map_err(|e| {
+        error!("{}", e.to_string());
+        ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "Internal Server Error",None )
+    })?.session;
+
+    let new_session = SessionToken { 
+        expired_date: None, 
+        browser_name: request.browser_name, 
+        device_id: request.device_id, 
+        device_type: request.device_type 
+    }
+    
+    if sessions.insert(user.id.clone(), new_session).is_none() {
+        Err(ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "Internal Server Error", Some("Failed to establish session".to_string())))
+    } else {
+        Ok(Json(ApiResponse {
+            data: user,
+            meta: None,
+        }))
+    }
+
 }
 
 pub async fn register(
@@ -72,9 +91,13 @@ pub async fn register(
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct LoginRequest {
     email: String,
     password: String,
+    browser_name: String,
+    device_id: String,
+    device_type: DeviceType,
 }
 
 #[derive(Debug, Deserialize)]
