@@ -1,10 +1,10 @@
 use std::sync::{Arc, Mutex};
 
-use axum::{extract::{ State}, routing::post, Json, Router};
+use axum::{extract::State, routing::post, Json, Router};
 use chrono::NaiveDate;
-use hyper::{HeaderMap, StatusCode};
+use hyper::{header::USER_AGENT, HeaderMap, StatusCode};
 use serde::Deserialize;
-use tracing::{error, info};
+use tracing::error;
 
 use crate::{
     configs::database::Users,
@@ -25,79 +25,98 @@ pub async fn login(
     header: HeaderMap,
     State(state): State<Arc<Mutex<AppState>>>,
     Json(request): Json<LoginRequest>,
-) -> Result<Json<ApiResponse<Users>>, ErrorResponse> {
-    info!("{:?}", header);
-    let database = state.lock().map_err(|e| {
-        error!("{}", e.to_string());
-        ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "Internal Server Error",None )
-    })?.db.clone();
-    let user =
-        sqlx::query_as::<_, Users>(r#"select * from users where email = $1 and password = $2"#)
-            .bind(request.email)
-            .bind(request.password)
-            .fetch_one(&database)
-            .await?;
-
-    let sessions = &mut state.lock().map_err(|e| {
-        error!("{}", e.to_string());
-        ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "Internal Server Error",None )
-    })?.session;
-
-    let new_session = SessionToken { 
-        expired_date: None, 
-        browser_name: request.browser_name, 
-        device_id: request.device_id, 
-        device_type: request.device_type 
-    }
-    
-    if sessions.insert(user.id.clone(), new_session).is_none() {
-        Err(ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "Internal Server Error", Some("Failed to establish session".to_string())))
-    } else {
-        Ok(Json(ApiResponse {
-            data: user,
-            meta: None,
-        }))
-    }
-
-}
-
-pub async fn register(
-    State(state): State<Arc<Mutex<AppState>>>,
-    Json(new_user): Json<RegisterRequest>,
 ) -> Result<Json<ApiResponse<String>>, ErrorResponse> {
-    let database = state.lock().map_err(|e|{
-         error!("{}", e.to_string());
-         ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "Internal Server Error", None)
-    })?.db.clone();
+    let database = state
+        .lock()
+        .map_err(|e| {
+            error!("{}", e.to_string());
+            ErrorResponse::new(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Internal Server Error",
+                None,
+            )
+        })?
+        .db
+        .clone();
 
-    let query_result = 
-        sqlx::query("insert into users(id, email, password, dob, username, fullname, address, avatar_url, alias,org_name) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)")
-        .bind(new_user.id)
-        .bind(new_user.email)
-        .bind(new_user.password)
-        .bind(new_user.dob)
-        .bind(new_user.username)
-        .bind(new_user.fullname)
-        .bind(new_user.address)
-        .bind(new_user.avatar_url)
-        .bind(new_user.alias)
-        .bind(new_user.org_name)
-        .execute(&database).await?;
+    let found_user = sqlx::query_as_unchecked!(
+        Users,
+        "select * from users where email = $1 and password = $2",
+        request.email,
+        request.password
+    )
+    .fetch_one(&database)
+    .await?;
+
+    let sessions = &mut state
+        .lock()
+        .map_err(|e| {
+            error!("{}", e.to_string());
+            ErrorResponse::new(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Internal Server Error",
+                None,
+            )
+        })?
+        .session;
+
+    let user_agent = header
+        .get(USER_AGENT)
+        .unwrap()
+        .to_str()
+        .map_err(|e| {
+            error!("{}", e.to_string());
+            ErrorResponse::new(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Internal Server Error",
+                Some("Invalid user-agent".to_string()),
+            )
+        })?
+        .to_string();
+    let new_session = SessionToken {
+        expired_date: None,
+        user_agent,
+        device_id: request.device_id,
+        device_type: DeviceType::Desktop,
+    };
+    sessions.insert(found_user.id, new_session);
 
     Ok(Json(ApiResponse {
-        data: format!("Create {} users successfully", query_result.rows_affected()) ,
+        data: String::from("Success"),
         meta: None,
     }))
 }
 
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct LoginRequest {
-    email: String,
-    password: String,
-    browser_name: String,
-    device_id: String,
-    device_type: DeviceType,
+pub async fn register(
+    State(state): State<Arc<Mutex<AppState>>>,
+    Json(request): Json<RegisterRequest>,
+) -> Result<Json<ApiResponse<String>>, ErrorResponse> {
+    let database = state
+        .lock()
+        .map_err(|e| {
+            error!("{}", e.to_string());
+            ErrorResponse::new(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Internal Server Error",
+                None,
+            )
+        })?
+        .db
+        .clone();
+
+    let query_result = sqlx::query!(r#"insert into users(id, email, password, dob, username, fullname, address, avatar_url, alias, org_name) values($1, $2,$3, $4, $5, $6, $7, $8, $9, $10)"#, request.id, request.email,request.password, request.dob,request.username, request.fullname,request.address, request.avatar_url, request.alias, request.org_name).execute(&database).await?;
+
+    if query_result.rows_affected() != 1 {
+        return Err(ErrorResponse::new(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Internal server error",
+            Some("Failed to insert into database".to_string()),
+        ));
+    }
+    Ok(Json(ApiResponse {
+        data: format!("Successfully created {} user", query_result.rows_affected()),
+        meta: None,
+    }))
 }
 
 #[derive(Debug, Deserialize)]
@@ -112,4 +131,12 @@ pub struct RegisterRequest {
     avatar_url: Option<String>,
     alias: Option<String>,
     org_name: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LoginRequest {
+    email: String,
+    password: String,
+    device_id: String,
 }

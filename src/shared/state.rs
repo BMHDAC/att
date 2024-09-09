@@ -14,7 +14,7 @@ pub struct AppState {
 #[serde(rename_all = "camelCase")]
 pub struct SessionToken {
     pub expired_date: Option<DateTime<Local>>,
-    pub browser_name: String,
+    pub user_agent: String,
     pub device_id: String,
     pub device_type: DeviceType,
 }
